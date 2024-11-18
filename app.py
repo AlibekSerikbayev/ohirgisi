@@ -1,6 +1,4 @@
-
-
-#uzgarish
+#uzgarish 2
 import streamlit as st
 from fastai.vision.all import *
 import plotly.express as px
