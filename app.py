@@ -1,40 +1,4 @@
-# import streamlit as st
-# from fastai.vision.all import *
-# import plotly.express as px
-# import pathlib
-# from pathlib import Path
 
-# # Pathlib uchun moslik o‘rnatish
-# temp = pathlib.PosixPath
-# pathlib.PosixPath = pathlib.WindowsPath if pathlib.Path().drive else temp
-
-# # Ilova sarlavhasi
-# st.title('Transportni klassifikatsiya qiluvchi model')
-
-# # Fayl yuklash
-# files = st.file_uploader("Rasm yuklash", type=["png", "jpeg", "jpg"])
-
-# if files:
-#     # Yuklangan rasmni chiqarish
-#     st.image(files, caption="Yuklangan rasm", use_column_width=True)
-
-#     # Faylni PILImage formatiga aylantirish
-#     img = PILImage.create(files.getvalue())
-
-#     # Modelni yuklash
-#     try:
-#         model = load_learner('transport_model.pkl')
-        
-#         # Bashorat qilish
-#         pred, pred_id, probs = model.predict(img)
-#         st.success(f"Bashorat: {pred}")
-#         st.info(f"Ehtimollik: {probs[pred_id] * 100:.1f}%")
-        
-#         # Diagramma
-#         fig = px.bar(x=probs * 100, y=model.dls.vocab, orientation='h', title="Bashorat ehtimolligi")
-#         st.plotly_chart(fig)
-#     except Exception as e:
-#         st.error(f"Modelni yuklashda xatolik: {e}")
 
 #uzgarish
 import streamlit as st
@@ -44,7 +8,8 @@ import pathlib
 pathlib.PosixPath = pathlib.Path
 
 # title
-st.title('Transportni klassifikatsiya qiluvchi model')
+st.title("Rasmlarni tanish dasturi")
+st.write("Klasslar Car Airplane Boat Carnivore Musical_instrument Sports_equipment Telephone Office_supplies Kitchen_utensil")
 
 # Rasmni joylash
 files = st.file_uploader("Rasm yuklash", type=["avif", "png", "jpeg", "gif", "svg"])
@@ -64,3 +29,11 @@ if files:
     # Plotting
     fig = px.bar(x=probs * 100, y=model.dls.vocab)
     st.plotly_chart(fig)
+
+    # Ijtimoiy tarmoq va GitHub sahifalarini ko'rsatish (Display social media and GitHub links)
+st.sidebar.header("Qo'shimcha ma'lumotlar")
+st.sidebar.write("Bizni ijtimoiy tarmoqlarda kuzatib boring:")
+st.sidebar.markdown("[Telegram](https://t.me/ali_bek_003)")
+st.sidebar.markdown("[Instagram](https://www.instagram.com/alib_ek0311/profilecard/?igsh=MWo5azN2MmM2cGs0aw==)")
+st.sidebar.markdown("[Github](https://github.com/AlibekSerikbayev)")
+st.write("Ushbu dastur Alibek Serikbayev tomonidan yaratildi ")
