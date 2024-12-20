@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 import cv2
 from sklearn.metrics.pairwise import cosine_similarity
+import streamlit.components.v1 as components
 
 # Foydalanuvchi ma'lumotlar bazasi
 users = {
@@ -17,6 +18,26 @@ def authenticate(username, password):
     if user and user["password"] == password:
         return True
     return False
+
+# Funksiya: Kamera uchun ruxsat so'rash
+def request_camera_permission():
+    components.html(
+        """
+        <script>
+        async function requestCameraAccess() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                stream.getTracks().forEach(track => track.stop()); // Kamerani to'xtatish
+                document.body.innerHTML += "<p style='color:green;'>Kamera uchun ruxsat berildi!</p>";
+            } catch (error) {
+                document.body.innerHTML += "<p style='color:red;'>Kamera uchun ruxsat berilmadi!</p>";
+            }
+        }
+        requestCameraAccess();
+        </script>
+        """,
+        height=100,
+    )
 
 # Funksiya: Kamera orqali real vaqt rejimida tasvir olish
 def capture_face_live():
@@ -80,6 +101,11 @@ def main():
             else:
                 st.error("Login yoki parol noto‘g‘ri.")
         st.stop()
+
+    # Kamera uchun ruxsat so'rash
+    st.header("Kamera uchun ruxsat")
+    if st.button("Kamera uchun ruxsat so'rash"):
+        request_camera_permission()
 
     # Face ID bosqichi
     st.header("Face ID Tasdiqlash")
