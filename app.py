@@ -27,21 +27,29 @@ def authenticate(username, password):
         return True
     return False
 
-# Funksiya: Face ID tasdiqlash
-def capture_face():
-    st.write("Face ID uchun kamerani yoqamiz...")
-    video_capture = cv2.VideoCapture(0)  # Web-kamerani yoqish
+# Funksiya: Kamera orqali tasvir olish (kameraga ruxsat so‘raydi)
+def capture_face_with_permission():
+    st.write("Face ID uchun kameradan foydalanishga ruxsat bering...")
+
+    # Kamera ochilishi va ishlashini tekshirish
+    video_capture = cv2.VideoCapture(0)  # Web-kamerani ochish
     if not video_capture.isOpened():
-        st.error("Kamera yoqilmadi. Iltimos, kamerani ulang.")
+        st.error("Kamera yoqilmadi. Iltimos, kameradan foydalanishga ruxsat bering yoki kamerani ulang.")
         return None
 
+    st.info("Tasvir olinmoqda. Kamera oldida turing...")
+
+    # Tasvir olish
     ret, frame = video_capture.read()
     if ret:
         video_capture.release()
         cv2.destroyAllWindows()
         return frame
-    return None
+    else:
+        st.error("Tasvirni olishda muammo yuz berdi. Iltimos, qayta urinib ko'ring.")
+        return None
 
+# Funksiya: Face ID tasdiqlash
 def verify_face(captured_image, stored_embedding):
     resized = cv2.resize(captured_image, (224, 224)).flatten()
     similarity = cosine_similarity([stored_embedding], [resized])[0][0]
@@ -72,8 +80,11 @@ def main():
     # Face ID bosqichi
     st.title("Face ID tasdiqlash")
     captured_image = None
+
     if st.button("Face ID olish"):
-        captured_image = capture_face()
+        # Kamera orqali tasvir olish
+        captured_image = capture_face_with_permission()
+
         if captured_image is not None:
             st.image(captured_image, caption="Olingan tasvir", use_column_width=True)
             
@@ -135,6 +146,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
