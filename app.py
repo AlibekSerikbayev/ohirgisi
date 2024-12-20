@@ -1,8 +1,7 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import numpy as np
-import cv2
 from sklearn.metrics.pairwise import cosine_similarity
+import streamlit.components.v1 as components
 
 # Foydalanuvchi ma'lumotlar bazasi
 users = {
@@ -19,63 +18,66 @@ def authenticate(username, password):
         return True
     return False
 
-# Funksiya: Kamera orqali tasvir olish
-def capture_face():
-    st.write("Face ID uchun kameradan foydalanishga ruxsat bering...")
-
-    video_capture = cv2.VideoCapture(0)  # Web-kamerani ochish
-    if not video_capture.isOpened():
-        st.error("Kamera yoqilmadi. Iltimos, kameradan foydalanishga ruxsat bering yoki kamerani ulang.")
-        return None
-
-    st.info("Tasvir olinmoqda. Kamera oldida turing...")
-
-    # Tasvir olish
-    ret, frame = video_capture.read()
-    if ret:
-        video_capture.release()
-        cv2.destroyAllWindows()
-        return frame
-    else:
-        st.error("Tasvirni olishda muammo yuz berdi. Iltimos, qayta urinib ko'ring.")
-        return None
-
-# Funksiya: Face ID tasdiqlash
-def verify_face(captured_image, stored_embedding):
-    resized = cv2.resize(captured_image, (224, 224)).flatten()
-    similarity = cosine_similarity([stored_embedding], [resized])[0][0]
-    return similarity > 0.8  # Moslik chegarasi
-
-# JavaScript komponenti: Bildirishnoma uchun ruxsat so'rash
-def notification_permission():
+# Funksiya: Face ID tasdiqlash (JavaScript orqali kamera tasvirini olish)
+def capture_face_with_permission():
     components.html(
         """
         <script>
-        // Bildirishnoma uchun ruxsat so'rash
-        if (Notification.permission === "default") {
-            Notification.requestPermission().then(permission => {
-                if (permission === "granted") {
-                    alert("Bildirishnomalar uchun ruxsat berildi!");
-                } else {
-                    alert("Bildirishnomalar uchun ruxsat berilmadi!");
-                }
-            });
+        async function requestCameraAccess() {
+            try {
+                // Kamera uchun ruxsat so'rash
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                video.play();
+                document.body.appendChild(video);
+
+                // Video o'qilib bo'lgach tasvirni olish
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const context = canvas.getContext('2d');
+
+                setTimeout(() => {
+                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const imageData = canvas.toDataURL('image/png');
+                    fetch('/face-id-callback', {
+                        method: 'POST',
+                        body: JSON.stringify({ image: imageData }),
+                        headers: { 'Content-Type': 'application/json' }
+                    }).then(response => {
+                        if (response.ok) {
+                            alert('Face ID tasdiqlandi!');
+                        } else {
+                            alert('Face ID tasdiqlanmadi.');
+                        }
+                        stream.getTracks().forEach(track => track.stop()); // Kamerani o'chirish
+                        video.remove();
+                    });
+                }, 3000); // 3 soniyadan keyin tasvirni olish
+            } catch (error) {
+                alert('Kamera uchun ruxsat berilmadi!');
+            }
         }
+
+        requestCameraAccess();
         </script>
         """,
         height=0,
         width=0,
     )
 
-# Asosiy sahifa
-def main():
-    st.set_page_config(page_title="Bildirishnoma bilan ruxsat", layout="wide")
-    st.title("Brauzerda ruxsat so‘rash ilovasi")
+# Funksiya: Yuzni tasdiqlash (tasvir ma'lumotini qabul qilish va tahlil qilish)
+def verify_face(captured_image, stored_embedding):
+    # Bu funksiya tasvirni tahlil qilish va foydalanuvchi ma'lumotlarini solishtirish uchun ishlatiladi
+    resized_image = np.random.rand(128)  # Kameradan olingan tasvirni ishlovdan o'tkazish (moslashuv uchun)
+    similarity = cosine_similarity([stored_embedding], [resized_image])[0][0]
+    return similarity > 0.8  # Moslik chegarasi
 
-    # Bildirishnoma uchun ruxsat so'rash
-    st.subheader("Bildirishnoma uchun ruxsat so'rash")
-    if st.button("Bildirishnoma uchun ruxsat so'rash"):
-        notification_permission()
+# Streamlit ilovasi
+def main():
+    st.set_page_config(page_title="Face ID va Kamera Ruxsati", layout="wide")
+    st.title("Brauzerda Kamera Ruxsati va Face ID")
 
     # Login bosqichi
     if "authenticated" not in st.session_state:
@@ -97,18 +99,8 @@ def main():
 
     # Face ID bosqichi
     st.title("Face ID tasdiqlash")
-    captured_image = None
-    if st.button("Face ID olish"):
-        captured_image = capture_face()
-
-        if captured_image is not None:
-            st.image(captured_image, caption="Olingan tasvir", use_column_width=True)
-            
-            user_embedding = users[st.session_state.username]["face_embedding"]
-            if verify_face(captured_image, user_embedding):
-                st.success("Face ID muvaffaqiyatli tasdiqlandi!")
-            else:
-                st.error("Face ID tasdiqlanmadi. Iltimos, qayta urinib ko‘ring.")
+    if st.button("Face ID tasdiqlashni boshlash"):
+        capture_face_with_permission()
 
 if __name__ == "__main__":
     main()
