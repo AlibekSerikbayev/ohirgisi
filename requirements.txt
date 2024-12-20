@@ -6,6 +6,6 @@ pillow
 requests
 fastai
 plotly
-
+dlib
 
 
