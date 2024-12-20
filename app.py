@@ -1,21 +1,23 @@
 import streamlit as st
 import numpy as np
 import cv2
+import dlib
 from sklearn.metrics.pairwise import cosine_similarity
+import bcrypt
 import streamlit.components.v1 as components
 
-# Foydalanuvchi ma'lumotlar bazasi
+# Foydalanuvchi ma'lumotlar bazasi (hashed parollar va embeddinglar)
 users = {
     "admin": {
-        "password": "password123",
-        "face_embedding": np.random.rand(128)  # Oldindan saqlangan yuz vektori
+        "password": bcrypt.hashpw("password123".encode('utf-8'), bcrypt.gensalt()),
+        "face_embedding": np.random.rand(128)  # Yuz embedding oldindan yaratilgan
     }
 }
 
 # Funksiya: Login va parolni tekshirish
 def authenticate(username, password):
     user = users.get(username)
-    if user and user["password"] == password:
+    if user and bcrypt.checkpw(password.encode('utf-8'), user["password"]):
         return True
     return False
 
@@ -48,7 +50,7 @@ def capture_face_live():
         st.error("Kamerani ochib bo'lmadi. Iltimos, kamerani ulang va qayta urinib ko'ring.")
         return None
 
-    stframe = st.empty()  # Realtime tasvirni Streamlitda ko'rsatish uchun joy
+    stframe = st.empty()  # Real vaqt tasvirni ko'rsatish uchun
     captured_frame = None
 
     while True:
@@ -72,12 +74,27 @@ def capture_face_live():
 
     return captured_frame
 
+# Funksiya: Yuzni aniqlash va embedding yaratish
+def get_face_embedding(image):
+    detector = dlib.get_frontal_face_detector()
+    sp = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
+    facerec = dlib.face_recognition_model_v1("dlib_face_recognition_resnet_model_v1.dat")
+
+    rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    faces = detector(rgb_image)
+
+    if len(faces) == 0:
+        st.error("Yuz aniqlanmadi. Iltimos, qayta urinib ko'ring.")
+        return None
+
+    shape = sp(rgb_image, faces[0])
+    face_embedding = np.array(facerec.compute_face_descriptor(rgb_image, shape))
+    return face_embedding
+
 # Funksiya: Face ID tasdiqlash
-def verify_face(captured_image, stored_embedding):
-    # Tasvirni oldindan ishlovdan o'tkazish
-    resized = cv2.resize(captured_image, (224, 224)).flatten()
-    similarity = cosine_similarity([stored_embedding], [resized])[0][0]
-    return similarity > 0.8  # Moslik chegarasi
+def verify_face(captured_embedding, stored_embedding):
+    similarity = cosine_similarity([stored_embedding], [captured_embedding])[0][0]
+    return similarity > 0.6  # Moslik chegarasi
 
 # Streamlit ilovasi
 def main():
@@ -117,15 +134,153 @@ def main():
         if captured_image is not None:
             st.image(captured_image, channels="BGR", caption="Tasdiqlangan tasvir")
             
-            user_embedding = users[st.session_state.username]["face_embedding"]
-            if verify_face(captured_image, user_embedding):
-                st.success("Face ID muvaffaqiyatli tasdiqlandi!")
-                st.write("Keyingi bosqichga o'tishingiz mumkin.")
-            else:
-                st.error("Face ID mos kelmadi. Iltimos, qayta urinib ko'ring.")
+            captured_embedding = get_face_embedding(captured_image)
+            if captured_embedding is not None:
+                user_embedding = users[st.session_state.username]["face_embedding"]
+                if verify_face(captured_embedding, user_embedding):
+                    st.success("Face ID muvaffaqiyatli tasdiqlandi!")
+                    st.write("Keyingi bosqichga o'tishingiz mumkin.")
+                else:
+                    st.error("Face ID mos kelmadi. Iltimos, qayta urinib ko'ring.")
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
+
+
+# import streamlit as st
+# import numpy as np
+# import cv2
+# from sklearn.metrics.pairwise import cosine_similarity
+# import streamlit.components.v1 as components
+
+# # Foydalanuvchi ma'lumotlar bazasi
+# users = {
+#     "admin": {
+#         "password": "password123",
+#         "face_embedding": np.random.rand(128)  # Oldindan saqlangan yuz vektori
+#     }
+# }
+
+# # Funksiya: Login va parolni tekshirish
+# def authenticate(username, password):
+#     user = users.get(username)
+#     if user and user["password"] == password:
+#         return True
+#     return False
+
+# # Funksiya: Kamera uchun ruxsat so'rash
+# def request_camera_permission():
+#     components.html(
+#         """
+#         <script>
+#         async function requestCameraAccess() {
+#             try {
+#                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+#                 stream.getTracks().forEach(track => track.stop()); // Kamerani to'xtatish
+#                 document.body.innerHTML += "<p style='color:green;'>Kamera uchun ruxsat berildi!</p>";
+#             } catch (error) {
+#                 document.body.innerHTML += "<p style='color:red;'>Kamera uchun ruxsat berilmadi!</p>";
+#             }
+#         }
+#         requestCameraAccess();
+#         </script>
+#         """,
+#         height=100,
+#     )
+
+# # Funksiya: Kamera orqali real vaqt rejimida tasvir olish
+# def capture_face_live():
+#     st.write("Kameradan tasvir olinmoqda...")
+
+#     video_capture = cv2.VideoCapture(0)  # Kamerani ochish
+#     if not video_capture.isOpened():
+#         st.error("Kamerani ochib bo'lmadi. Iltimos, kamerani ulang va qayta urinib ko'ring.")
+#         return None
+
+#     stframe = st.empty()  # Realtime tasvirni Streamlitda ko'rsatish uchun joy
+#     captured_frame = None
+
+#     while True:
+#         ret, frame = video_capture.read()
+#         if not ret:
+#             st.error("Tasvirni olishda muammo yuz berdi.")
+#             break
+
+#         # Tasvirni ko'rsatish
+#         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+#         stframe.image(frame_rgb, channels="RGB", caption="Tasvir kameradan olinmoqda")
+
+#         # Foydalanuvchi tasvirni olish uchun "Tasdiqlash" tugmasi
+#         if st.button("Tasvirni tasdiqlash", key="confirm"):
+#             captured_frame = frame
+#             break
+
+#     video_capture.release()
+#     cv2.destroyAllWindows()
+#     stframe.empty()  # Kamera oynasini tozalash
+
+#     return captured_frame
+
+# # Funksiya: Face ID tasdiqlash
+# def verify_face(captured_image, stored_embedding):
+#     # Tasvirni oldindan ishlovdan o'tkazish
+#     resized = cv2.resize(captured_image, (224, 224)).flatten()
+#     similarity = cosine_similarity([stored_embedding], [resized])[0][0]
+#     return similarity > 0.8  # Moslik chegarasi
+
+# # Streamlit ilovasi
+# def main():
+#     st.set_page_config(page_title="Face ID Tizimi", layout="wide")
+#     st.title("Face ID orqali autentifikatsiya")
+
+#     # Login bosqichi
+#     if "authenticated" not in st.session_state:
+#         st.session_state.authenticated = False
+
+#     if not st.session_state.authenticated:
+#         st.header("Login")
+#         username = st.text_input("Foydalanuvchi nomi")
+#         password = st.text_input("Parol", type="password")
+
+#         if st.button("Kirish"):
+#             if authenticate(username, password):
+#                 st.session_state.authenticated = True
+#                 st.session_state.username = username
+#                 st.success("Login muvaffaqiyatli! Endi Face ID tasdiqlash.")
+#             else:
+#                 st.error("Login yoki parol noto‘g‘ri.")
+#         st.stop()
+
+#     # Kamera uchun ruxsat so'rash
+#     st.header("Kamera uchun ruxsat")
+#     if st.button("Kamera uchun ruxsat so'rash"):
+#         request_camera_permission()
+
+#     # Face ID bosqichi
+#     st.header("Face ID Tasdiqlash")
+#     captured_image = None
+
+#     if st.button("Kamerani yoqish va tasvir olish"):
+#         captured_image = capture_face_live()
+
+#         if captured_image is not None:
+#             st.image(captured_image, channels="BGR", caption="Tasdiqlangan tasvir")
+            
+#             user_embedding = users[st.session_state.username]["face_embedding"]
+#             if verify_face(captured_image, user_embedding):
+#                 st.success("Face ID muvaffaqiyatli tasdiqlandi!")
+#                 st.write("Keyingi bosqichga o'tishingiz mumkin.")
+#             else:
+#                 st.error("Face ID mos kelmadi. Iltimos, qayta urinib ko'ring.")
+
+# if __name__ == "__main__":
+#     main()
 
 
 
