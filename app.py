@@ -15,7 +15,7 @@ pathlib.PosixPath = pathlib.Path
 # Foydalanuvchi ma'lumotlar bazasi
 users = {
     "admin": {
-        "password": "1234",
+        "password": "password123",
         "face_embedding": np.random.rand(128)  # Oldindan olingan yuz vektori
     }
 }
@@ -106,7 +106,36 @@ def main():
         try:
             if file_upload:
                 img = PILImage.create(file_upload)
-                st.image(file_upload, captio
+                st.image(file_upload, caption="Yuklangan rasm")
+            else:
+                response = requests.get(url_input)
+                img = PILImage.create(BytesIO(response.content))
+                st.image(img, caption="URL orqali yuklangan rasm")
+            
+            if isinstance(img, PILImage) and model is not None:
+                pred, pred_id, probs = model.predict(img)
+                st.success(f"Bashorat: {pred}")
+                st.info(f"Ehtimollik: {probs[pred_id] * 100:.1f}%")
+                
+                # Diagramma chizish
+                fig = px.bar(x=probs * 100, y=model.dls.vocab, labels={'x': "Ehtimollik (%)", 'y': "Klasslar"}, orientation='h')
+                st.plotly_chart(fig)
+            else:
+                st.error("Tasvirni yoki modelni yuklashda muammo bor.")
+        except Exception as e:
+            st.error(f"Bashorat qilishda xatolik: {e}")
+
+    # Sidebar qo'shimchalar
+    st.sidebar.header("Qo'shimcha ma'lumotlar")
+    st.sidebar.write("Bizni ijtimoiy tarmoqlarda kuzatib boring:")
+    st.sidebar.markdown("[Telegram](https://t.me/ali_bek_003)")
+    st.sidebar.markdown("[Instagram](https://www.instagram.com/alib_ek0311/profilecard/?igsh=MWo5azN2MmM2cGs0aw==)")
+    st.sidebar.markdown("[Github](https://github.com/AlibekSerikbayev)")
+    st.write("Ushbu dastur Alibek Serikbayev tomonidan yaratildi")
+
+if __name__ == "__main__":
+    main()
+
 
 
 
