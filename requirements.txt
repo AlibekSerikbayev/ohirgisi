@@ -1,2 +1,11 @@
+streamlit
+opencv-python-headless
+numpy
+scikit-learn
+pillow
+requests
 fastai
 plotly
+
+
+
